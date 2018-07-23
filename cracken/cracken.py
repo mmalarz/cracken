@@ -12,6 +12,14 @@ c = None
 db_file = ''
 
 
+SUPPORTED_ALGORITHMS = {
+    'md5': hashlib.md5,
+    'sha256': hashlib.sha256,
+    'sha384': hashlib.sha384,
+    'sha512': hashlib.sha512
+}
+
+
 def is_db_configured():
     if not c and not conn:
         print('[!] Database file not specified')
@@ -39,8 +47,23 @@ def current_db():
         print(f'[i] Current database is {db_file}')
 
 
+def supported_algorithms():
+    for alg in SUPPORTED_ALGORITHMS:
+        print(alg)
+
+
 def create_table():
     c.execute('CREATE TABLE IF NOT EXISTS passwords (hash TEXT, password TEXT UNIQUE)')
+
+
+def get_algorithm():
+    supported_algorithms()
+    while True:
+        algorithm = str(input('Algorithm to use while hashing password: ')).lower()
+        if algorithm in SUPPORTED_ALGORITHMS:
+            return algorithm
+        else:
+            print('Algorithm not supported')
 
 
 def add_to_db(file_name, fast=False, encoding='latin-1'):
@@ -53,6 +76,7 @@ def add_to_db(file_name, fast=False, encoding='latin-1'):
         print('[!] File does not exists')
         return
     if is_db_configured():
+        algorithm = get_algorithm()
         create_table()
 
         with open(file_name, 'r', encoding=encoding) as f:
@@ -66,7 +90,7 @@ def add_to_db(file_name, fast=False, encoding='latin-1'):
                 c.execute('BEGIN TRANSACTION ')
 
                 for password in chunk:
-                    hashed_password = hashlib.md5()
+                    hashed_password = SUPPORTED_ALGORITHMS[algorithm]()
                     hashed_password.update(bytes(password, encoding))
 
                     c.execute('INSERT OR IGNORE INTO passwords VALUES (?, ?)', (hashed_password.hexdigest(), password))
@@ -89,10 +113,6 @@ def search_in_db(hashed_password):
             print('[!] Password not found')
 
 
-def algorithms_supported():
-    print(hashlib.algorithms_available)
-
-
 def cracken_exit():
     if is_db_configured():
         c.close()
@@ -103,18 +123,17 @@ def cracken_exit():
 def main():
     menu()
 
-    single_options = {
+    single_arg_options = {
         'select_db': select_db,
         'add': functools.partial(add_to_db, fast=False),
         'fast_add': functools.partial(add_to_db, fast=True),
         'crack': search_in_db,
     }
 
-    args_options = {
-
+    no_args_options = {
         'list_db': list_db_files,
         'current_db': current_db,
-        'algorithms_supported': algorithms_supported,
+        'algorithms_supported': supported_algorithms,
         'menu': menu,
         'help': hints,
         'exit': cracken_exit,
@@ -124,14 +143,13 @@ def main():
         command = input('\n> ')
         command = command.split(' ')
 
-        if len(command) == 2 and command[0] in single_options:
-            single_options[command[0]](command[1])
-        elif len(command) == 1 and command[0] in args_options:
-            args_options[command[0]]()
+        if len(command) == 2 and command[0] in single_arg_options:
+            single_arg_options[command[0]](command[1])
+        elif len(command) == 1 and command[0] in no_args_options:
+            no_args_options[command[0]]()
         else:
             print('Invalid command')
 
 
 if __name__ == '__main__':
     main()
-
