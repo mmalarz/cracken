@@ -4,8 +4,8 @@ import os
 import sqlite3
 import sys
 
-from cli import *
-from files.management import *
+from . import cli
+from .files import management
 
 conn = None
 c = None
@@ -34,7 +34,7 @@ def select_db(db_file_name):
 
     db_file = db_file_name
 
-    if db_file not in list_db_files():
+    if db_file not in management.list_db_files():
         print(f'[i] Creating database {db_file}')
 
     conn = sqlite3.connect(db_file_name)
@@ -86,7 +86,7 @@ def add_to_db(file_name, fast=False, encoding='latin-1'):
                 c.execute('PRAGMA synchronous=OFF')
 
             print('[i] Splitting data into parts')
-            for chunk in read_in_chunks(f):
+            for chunk in management.read_in_chunks(f):
                 c.execute('BEGIN TRANSACTION ')
 
                 for password in chunk:
@@ -121,7 +121,7 @@ def cracken_exit():
 
 
 def main():
-    menu()
+    cli.menu()
 
     single_arg_options = {
         'select_db': select_db,
@@ -131,11 +131,11 @@ def main():
     }
 
     no_args_options = {
-        'list_db': list_db_files,
+        'list_db': management.list_db_files,
         'current_db': current_db,
         'algorithms_supported': supported_algorithms,
-        'menu': menu,
-        'help': hints,
+        'menu': cli.menu,
+        'help': cli.hints,
         'exit': cracken_exit,
     }
 
